@@ -16,10 +16,8 @@ services:
       # Render pone un proxy delante: con esto se lee la IP real del visitante
       - key: TRUST_PROXY
         value: "1"
-      # Solo estas IP (o rangos CIDR) pueden entrar; el resto recibe 403.
-      # Ej.: 109.123.252.218,179.6.7.148  (agrega tu rango IPv6 si tu navegador sale por IPv6)
-      - key: IPS_PERMITIDAS
-        sync: false
+      # Opcional: para restringir por IP agrega en el panel IPS_PERMITIDAS=ip1,ip2 (acepta CIDR).
+      # Sin ella el laboratorio queda abierto a internet.
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: MODELO

@@ -43,12 +43,9 @@ for (const entrada of IPS_PERMITIDAS) {
 }
 const ipPermitida = ip => { try { return LISTA_IPS.check(ip, ip.includes(':') ? 'ipv6' : 'ipv4'); } catch (e) { return false; } };
 const CLAVE_INTERNA = crypto.randomBytes(24).toString('hex');
-// Seguro: en un hosting (Render define RENDER=true) no se arranca sin lista de IP,
-// para que el laboratorio vulnerable no quede abierto a todo internet por olvido.
-if ((process.env.RENDER || process.env.NODE_ENV === 'production') && !IPS_PERMITIDAS.length && process.env.PERMITIR_PUBLICO !== '1') {
-  console.error('  X  Falta IPS_PERMITIDAS: el laboratorio no se publica abierto a todo internet.');
-  console.error('     Define IPS_PERMITIDAS=ip1,ip2 en las variables del hosting.');
-  process.exit(1);
+// IPS_PERMITIDAS es opcional: sin ella el laboratorio queda abierto (aviso en consola).
+if (!IPS_PERMITIDAS.length && (process.env.RENDER || process.env.NODE_ENV === 'production')) {
+  console.warn('  !  Sin IPS_PERMITIDAS: el laboratorio queda ABIERTO a internet. Apagalo al terminar.');
 }
 if (process.env.TRUST_PROXY) app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY);
 if (IPS_PERMITIDAS.length) {
