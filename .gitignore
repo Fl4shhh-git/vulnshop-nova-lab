@@ -1,0 +1,5 @@
+node_modules/
+.env
+*.exe
+# fotos subidas en el lab 12 (se generan al usar la tienda)
+public/uploads/fotos/

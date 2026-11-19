@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Comentarios y Resenas</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .comment-card{border:1px solid #eee;border-radius:10px;padding:16px;margin-bottom:12px;background:#fff}
+  .comment-card .comment-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .comment-card .avatar{width:36px;height:36px;border-radius:50%;background:#1a1a2e;color:#4cc9f0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0}
+  .comment-card .author{font-weight:600;font-size:.9rem}
+  .comment-card .date{font-size:.78rem;color:#aaa;margin-left:auto}
+  .comment-card .stars{color:#f6ad55;font-size:.85rem;margin-bottom:6px}
+  .comment-card .body{font-size:.9rem;color:#444;line-height:1.5}
+  .comment-form{background:#f8f9fa;border-radius:10px;padding:20px}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html">Mis Pedidos</a>
+    <a href="/reviews.html" style="color:#4cc9f0">Comentarios</a>
+    <a href="/checkout.html">Checkout</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container" style="max-width:760px">
+
+  <div class="card">
+    <h2>Deja tu comentario</h2>
+    <form id="review-form">
+      <label>Producto</label>
+      <select id="product-id" name="product_id"></select>
+
+      <label>Puntuacion</label>
+      <select id="rating" name="rating">
+        <option value="5">5 estrellas &mdash; Excelente</option>
+        <option value="4">4 estrellas &mdash; Muy bueno</option>
+        <option value="3">3 estrellas &mdash; Regular</option>
+        <option value="2">2 estrellas &mdash; Malo</option>
+        <option value="1">1 estrella &mdash; Muy malo</option>
+      </select>
+
+      <label>Comentario</label>
+      <textarea id="content" name="content" rows="3"
+                placeholder="Comparte tu experiencia con este producto..."></textarea>
+
+      <div id="form-alert"></div>
+      <br>
+      <button type="submit" class="btn btn-primary">Publicar comentario</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Comentarios de clientes</h2>
+    <div id="reviews-list">Cargando comentarios...</div>
+  </div>
+
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+let PRODUCTS = {};
+async function cargarProductos() {
+  const data = await fetch('/api/productos').then(r => r.json());
+  const sel = document.getElementById('product-id');
+  (data.productos || []).forEach(p => {
+    PRODUCTS[p.id] = p.nombre;
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.nombre;
+    sel.appendChild(o);
+  });
+  const pre = new URLSearchParams(location.search).get('producto');
+  if (pre) sel.value = pre;
+}
+
+async function loadReviews() {
+  const res     = await fetch('/api/reviews');
+  const data    = await res.json();
+  const reviews = data.reviews || [];
+  const list    = document.getElementById('reviews-list');
+
+  if (!reviews.length) {
+    list.innerHTML = '<p style="color:#999;padding:16px 0">Aun no hay comentarios. Se el primero en opinar.</p>';
+    return;
+  }
+
+  list.innerHTML = '';
+  reviews.forEach(r => {
+    const card = document.createElement('div');
+    card.className = 'comment-card';
+
+    // Header con avatar y autor
+    const header = document.createElement('div');
+    header.className = 'comment-header';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = (r.username || 'U')[0].toUpperCase();
+
+    const author = document.createElement('div');
+    author.className = 'author';
+    author.textContent = r.username || 'Usuario';
+
+    const date = document.createElement('div');
+    date.className = 'date';
+    date.textContent = PRODUCTS[r.product_id] || 'Producto';
+
+    header.appendChild(avatar);
+    header.appendChild(author);
+    header.appendChild(date);
+
+    // Estrellas
+    const stars = document.createElement('div');
+    stars.className = 'stars';
+    stars.textContent = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
+
+    // Cuerpo del comentario (admite formato)
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.innerHTML = r.content;
+
+    card.appendChild(header);
+    card.appendChild(stars);
+    card.appendChild(body);
+    list.appendChild(card);
+  });
+}
+
+document.getElementById('review-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const product_id = document.getElementById('product-id').value;
+  const rating     = document.getElementById('rating').value;
+  const content    = document.getElementById('content').value;
+  const alertEl    = document.getElementById('form-alert');
+
+  const res  = await fetch('/api/reviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ product_id, rating, content })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    alertEl.innerHTML = '<div class="alert alert-success" style="margin-top:12px">Comentario publicado.</div>';
+    document.getElementById('content').value = '';
+    loadReviews();
+    setTimeout(() => alertEl.innerHTML = '', 2000);
+  } else {
+    alertEl.innerHTML = '<div class="alert alert-error" style="margin-top:12px">Error al publicar.</div>';
+  }
+});
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+cargarProductos().then(loadReviews);
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Mis Documentos</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+  .doc-card{border:1px solid #eee;border-radius:12px;overflow:hidden;background:#fff;text-decoration:none;color:inherit;transition:box-shadow .2s}
+  .doc-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.12)}
+  .doc-thumb{width:100%;height:150px;object-fit:cover;background:#f1f3f5;border-bottom:1px solid #eee}
+  .doc-body{padding:14px 16px}
+  .doc-body .tipo{font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;color:#3182ce;font-weight:700;margin-bottom:5px}
+  .doc-body .titulo{font-weight:600;font-size:.9rem;line-height:1.35;margin-bottom:6px}
+  .doc-body .fecha{font-size:.78rem;color:#999}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html">Mis Pedidos</a>
+    <a href="/documentos.html" style="color:#4cc9f0">Documentos</a>
+    <a href="/mi-cuenta.html">Mi Cuenta</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <h2>Mis Documentos</h2>
+    <p style="color:#888;font-size:.9rem;margin-bottom:20px">Documentos asociados a tu cuenta. Haz clic para ver el detalle.</p>
+    <div id="docs" class="doc-grid"><p style="color:#aaa">Cargando...</p></div>
+  </div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+async function load() {
+  const res = await fetch('/api/documentos', { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) { logout(); return; }
+  const { documentos } = await res.json();
+  const cont = document.getElementById('docs');
+  cont.innerHTML = documentos.length
+    ? documentos.map(d => `
+        <a href="/ver-documento.html?id=${d.id}" class="doc-card">
+          <img class="doc-thumb" src="${d.archivo}" alt="${d.tipo}" onerror="this.style.background='#e9ecef'">
+          <div class="doc-body">
+            <div class="tipo">${d.tipo}</div>
+            <div class="titulo">${d.titulo}</div>
+            <div class="fecha">${d.id} &middot; ${d.fecha}</div>
+          </div>
+        </a>`).join('')
+    : '<p style="color:#999">No tienes documentos.</p>';
+}
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+load();
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

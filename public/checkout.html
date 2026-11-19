@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Checkout</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .order-summary{background:#f8f9fa;border-radius:10px;padding:20px;margin-bottom:20px}
+  .order-summary .row{display:flex;justify-content:space-between;padding:6px 0;font-size:.9rem}
+  .order-summary .total{font-weight:700;font-size:1.05rem;border-top:1px solid #ddd;margin-top:8px;padding-top:10px}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html">Mis Pedidos</a>
+    <a href="/search?q=">Productos</a>
+    <a href="/checkout.html" style="color:#4cc9f0">Checkout</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container" style="max-width:700px">
+  <div class="card">
+    <h2>Finalizar compra</h2>
+
+    <form id="checkout-form">
+      <label>Producto</label>
+      <select id="product-select" onchange="updateSummary()"></select>
+
+      <label>Cantidad</label>
+      <input type="number" id="qty" value="1" min="1" max="10" onchange="updateSummary()">
+
+      <label>Direccion de envio</label>
+      <input type="text" id="address" placeholder="Ej: Av. Arequipa 1234, Miraflores, Lima">
+
+      <label>Cupon de descuento</label>
+      <input type="text" id="cupon" placeholder="Ingresa tu cupon (ej: BIENVENIDA)" oninput="updateSummary()">
+
+      <input type="hidden" id="price" name="price" value="449.99">
+      <input type="hidden" id="discount_percent" name="discount_percent" value="0">
+
+      <div class="order-summary" style="margin-top:20px">
+        <div class="row"><span>Producto</span><span id="sum-product">Monitor LG 4K 27"</span></div>
+        <div class="row"><span>Precio unitario</span><span>S/ <span id="sum-price">449.99</span></span></div>
+        <div class="row"><span>Cantidad</span><span id="sum-qty">1</span></div>
+        <div class="row"><span>Descuento</span><span id="sum-disc">0%</span></div>
+        <div class="row total"><span>Total</span><span>S/ <span id="sum-total">449.99</span></span></div>
+      </div>
+
+      <div id="checkout-alert"></div>
+      <button type="submit" class="btn btn-primary">Confirmar pedido</button>
+    </form>
+  </div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+const CUPONES = { BIENVENIDA: 10, VIGILANTIUM: 15 };
+async function cargarProductos() {
+  const data = await fetch('/api/productos').then(r => r.json());
+  const sel = document.getElementById('product-select');
+  (data.productos || []).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id; o.dataset.price = p.precio.toFixed(2); o.textContent = p.nombre;
+    sel.appendChild(o);
+  });
+  sel.value = new URLSearchParams(location.search).get('producto') || '2';
+  updateSummary();
+}
+cargarProductos();
+
+function updateSummary() {
+  const sel   = document.getElementById('product-select');
+  const opt   = sel.options[sel.selectedIndex];
+  const price = parseFloat(opt.dataset.price);
+  const qty   = parseInt(document.getElementById('qty').value) || 1;
+  const cupon = (document.getElementById('cupon').value || '').toUpperCase().trim();
+  const disc  = CUPONES[cupon] || 0;
+  const total = price * qty * (1 - disc / 100);
+  document.getElementById('price').value             = price;
+  document.getElementById('discount_percent').value  = disc;
+  document.getElementById('sum-product').textContent = opt.text;
+  document.getElementById('sum-price').textContent   = price.toFixed(2);
+  document.getElementById('sum-qty').textContent     = qty;
+  document.getElementById('sum-disc').textContent    = disc + '%';
+  document.getElementById('sum-total').textContent   = total.toFixed(2);
+}
+
+document.getElementById('checkout-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const product_id       = document.getElementById('product-select').value;
+  const quantity         = document.getElementById('qty').value;
+  const price            = document.getElementById('price').value;
+  const discount_percent = document.getElementById('discount_percent').value;
+  const cupon            = document.getElementById('cupon').value;
+  const alertEl          = document.getElementById('checkout-alert');
+
+  const res  = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ product_id, quantity, price, discount_percent, cupon })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    alertEl.innerHTML = `<div class="alert alert-success" style="margin-top:12px">
+      Pedido confirmado. <strong>${data.order.product}</strong> x${data.order.quantity} &mdash; Total: S/ ${data.order.total.toFixed(2)}
+    </div>`;
+  } else {
+    alertEl.innerHTML = `<div class="alert alert-error" style="margin-top:12px">Error al procesar el pedido.</div>`;
+  }
+});
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

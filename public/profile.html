@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Mi Perfil</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .profile-avatar{width:72px;height:72px;border-radius:50%;background:#1a1a2e;color:#4cc9f0;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin-bottom:16px}
+  .info-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:.92rem}
+  .info-row:last-child{border-bottom:none}
+  .info-label{color:#888}
+  .info-value{font-weight:600}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html">Mis Pedidos</a>
+    <a href="/search?q=">Productos</a>
+    <a href="/profile.html" style="color:#4cc9f0">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container" style="max-width:600px">
+  <div class="card">
+    <div class="profile-avatar" id="avatar">-</div>
+    <form id="foto-form" style="margin-bottom:14px">
+      <label style="font-size:.85rem;color:#555">Actualizar foto de perfil (JPG o PNG)</label>
+      <input type="file" id="foto" accept="image/*" style="margin:6px 0">
+      <button type="submit" class="btn btn-primary btn-sm" style="width:auto">Subir foto</button>
+      <div id="foto-alert" style="font-size:.82rem;margin-top:6px"></div>
+    </form>
+    <h2 id="profile-name">Cargando...</h2>
+    <div id="profile-info"></div>
+  </div>
+
+  <div class="card">
+    <h2>Seguridad de la cuenta</h2>
+    <p style="color:#555;font-size:.9rem;margin-bottom:20px">
+      Para proteger tu cuenta, cierra sesion cuando no estes usando la plataforma.
+    </p>
+    <a href="/cambiar-password.html" class="btn btn-primary" style="width:auto;margin-right:10px">Cambiar contrasena</a>
+    <button class="btn btn-danger" style="width:auto" onclick="logout()">Cerrar sesion</button>
+  </div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+async function load() {
+  const res = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) { logout(); return; }
+  const me  = await res.json();
+
+  window.__me = me;
+  const foto = await fetch('/api/perfil/foto?dni=' + me.dni).then(r => r.json()).catch(() => ({}));
+  const av = document.getElementById('avatar');
+  if (foto.url) av.innerHTML = '<img src="' + foto.url + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+  else av.textContent = me.username[0].toUpperCase();
+  document.getElementById('profile-name').textContent = me.username;
+  document.getElementById('profile-info').innerHTML   = `
+    <div class="info-row"><span class="info-label">Correo electronico</span><span class="info-value">${me.email}</span></div>
+    <div class="info-row"><span class="info-label">Tipo de cuenta</span><span class="info-value">${me.role === 'admin' ? 'Administrador' : 'Cliente'}</span></div>
+    <div class="info-row"><span class="info-label">Saldo</span><span class="info-value">S/ ${me.balance}</span></div>`;
+}
+
+// Subida de foto: la unica validacion del tipo de archivo es esta, en el navegador.
+document.getElementById('foto-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = document.getElementById('foto').files[0];
+  const alerta = document.getElementById('foto-alert');
+  if (!f) { alerta.textContent = 'Elige una imagen.'; return; }
+  if (!/^image\/(jpeg|png)$/.test(f.type)) { alerta.textContent = 'Solo se permiten imagenes JPG o PNG.'; return; }
+  const lector = new FileReader();
+  lector.onload = async () => {
+    const r = await fetch('/api/perfil/foto', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dni: window.__me.dni, archivo: f.name, contenido: lector.result }) });
+    const d = await r.json();
+    alerta.textContent = d.success ? 'Foto actualizada.' : (d.error || 'No se pudo subir la foto.');
+    if (d.success) load();
+  };
+  lector.readAsDataURL(f);
+});
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+load();
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

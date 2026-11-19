@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Mis Pedidos</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .order-card{display:flex;gap:20px;align-items:center;padding:20px;border:1px solid #eee;border-radius:12px;margin-bottom:14px;background:#fff;transition:box-shadow .2s;text-decoration:none;color:inherit}
+  .order-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+  .order-card img{width:90px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #eee;flex-shrink:0;background:#f8f9fa}
+  .order-card-info{flex:1}
+  .order-card-info .name{font-weight:700;font-size:.97rem;margin-bottom:4px}
+  .order-card-info .meta{font-size:.82rem;color:#888}
+  .order-card-right{text-align:right;flex-shrink:0}
+  .order-card-right .price{font-weight:800;font-size:1.05rem;color:#1a1a2e}
+  .order-card-right .arrow{color:#3182ce;font-size:.82rem;margin-top:6px}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html" style="color:#4cc9f0">Mis Pedidos</a>
+    <a href="/search?q=">Productos</a>
+    <a href="/checkout.html">Checkout</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <h2>Mis Pedidos</h2>
+    <div id="orders-list">Cargando...</div>
+  </div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+const STATUS_LABELS = { delivered: 'Entregado', shipped: 'En camino', pending: 'Pendiente' };
+const STATUS_DOT    = { delivered: '[OK]', shipped: '[->]', pending: '[...]' };
+const FALLBACK      = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&q=80';
+
+async function load() {
+  const res  = await fetch('/api/orders', { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) { logout(); return; }
+  const data   = await res.json();
+  const orders = data.orders || [];
+  const list   = document.getElementById('orders-list');
+
+  if (!orders.length) {
+    list.innerHTML = '<p style="color:#999;padding:20px 0">No tienes pedidos registrados.</p>';
+    return;
+  }
+
+  list.innerHTML = orders.map(o => `
+    <a href="/order-detail.html?id=${o.id}" class="order-card">
+      <img src="${o.image || FALLBACK}" alt="${o.product}"
+           onerror="this.src='${FALLBACK}'">
+      <div class="order-card-info">
+        <div class="name">${o.product}</div>
+        <div class="meta">
+          Pedido #${o.id} &nbsp;&middot;&nbsp; ${o.brand || ''} &nbsp;&middot;&nbsp;
+          <span class="badge badge-${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+        </div>
+      </div>
+      <div class="order-card-right">
+        <div class="price">S/ ${o.price.toFixed(2)}</div>
+        <div class="arrow">Ver detalle &rarr;</div>
+      </div>
+    </a>`).join('');
+}
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+load();
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

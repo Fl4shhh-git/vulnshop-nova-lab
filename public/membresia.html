@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Membresia</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .member-card{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden}
+  .member-card::after{content:'';position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(76,201,240,.08)}
+  .member-card .nivel{font-size:.8rem;letter-spacing:2px;text-transform:uppercase;color:#4cc9f0;margin-bottom:8px}
+  .member-card .nombre{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+  .member-card .uuid-label{font-size:.75rem;color:#aaa;margin-top:16px;letter-spacing:.5px}
+  .member-card .uuid-val{font-family:monospace;font-size:.88rem;color:#e2e8f0;margin-top:3px;word-break:break-all}
+  .badge-nivel{display:inline-block;padding:3px 12px;border-radius:12px;font-size:.75rem;font-weight:700;margin-top:12px}
+  .Gold-bg{background:#854d0e;color:#fef9c3}
+  .Silver-bg{background:#475569;color:#f1f5f9}
+  .Bronze-bg{background:#9a3412;color:#fef3f2}
+  .benefit-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:.9rem}
+  .benefit-item:last-child{border-bottom:none}
+  .benefit-icon{width:36px;height:36px;border-radius:8px;background:#f0f7ff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+  .info-row{padding:11px 0;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;font-size:.9rem}
+  .info-row .lbl{color:#888}
+  .info-row .val{font-weight:600}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html">Mis Pedidos</a>
+    <a href="/search?q=">Productos</a>
+    <a href="/membresia.html" style="color:#4cc9f0">Membresia</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container" style="max-width:720px">
+  <div id="content"><div style="text-align:center;padding:60px;color:#aaa">Cargando...</div></div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+const params = new URLSearchParams(window.location.search);
+let   uuid   = params.get('uid');
+const FALLBACK = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&q=80';
+const STATUS   = { delivered: 'Entregado', shipped: 'En camino', pending: 'Pendiente' };
+const BENEFICIOS = {
+  Gold:   ['Envio gratis ilimitado', 'Descuento 15% en todas las compras', 'Soporte prioritario 24/7', 'Acceso anticipado a ofertas'],
+  Silver: ['Envio gratis en compras > S/ 100', 'Descuento 8% en electronica', 'Soporte por chat'],
+  Bronze: ['Envio gratis en compras > S/ 200', 'Acceso a ofertas semanales'],
+};
+const ICONS = ['&#128666;','&#128176;','&#127911;','&#9889;','&#127873;','&#128230;'];
+
+async function load() {
+  if (!uuid) {
+    const meRes = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (meRes.status === 401) { logout(); return; }
+    const me = await meRes.json();
+    uuid = me.uuid;
+    history.replaceState(null, '', `/membresia.html?uid=${uuid}`);
+  }
+
+  const res = await fetch(`/api/v1/usuarios/${uuid}`);
+  if (res.status === 404) {
+    document.getElementById('content').innerHTML =
+      `<div class="card" style="text-align:center;padding:60px;color:#999"><h3 style="color:#555">Membresia no encontrada</h3></div>`;
+    return;
+  }
+
+  const { perfil: u, pedidos } = await res.json();
+  document.title = `VulnShop - Membresia ${u.nombre}`;
+  const nivel      = u.nivel_membresia;
+  const beneficios = BENEFICIOS[nivel] || [];
+
+  document.getElementById('content').innerHTML = `
+    <div class="member-card">
+      <div class="nivel">VulnShop Membership</div>
+      <div class="nombre">${u.nombre}</div>
+      <span class="badge-nivel ${nivel}-bg">${nivel} Member</span>
+      <div class="uuid-label">ID DE MEMBRESIA</div>
+      <div class="uuid-val">${u.uuid}</div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:16px">Informacion de la cuenta</h2>
+      <div class="info-row"><span class="lbl">Correo electronico</span><span class="val">${u.email}</span></div>
+      <div class="info-row"><span class="lbl">Telefono</span><span class="val">${u.telefono}</span></div>
+      <div class="info-row"><span class="lbl">Direccion</span><span class="val">${u.direccion}</span></div>
+      <div class="info-row"><span class="lbl">Tarjeta registrada</span><span class="val">${u.tarjeta}</span></div>
+      <div class="info-row"><span class="lbl">Saldo disponible</span><span class="val">S/ ${u.balance}</span></div>
+      <div class="info-row"><span class="lbl">DNI</span><span class="val">${u.dni}</span></div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:16px">Beneficios ${nivel}</h2>
+      ${beneficios.map((b,i) => `
+        <div class="benefit-item">
+          <div class="benefit-icon">${ICONS[i]||'+'}</div>
+          <span>${b}</span>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:16px">Ultimos pedidos</h2>
+      ${pedidos.length
+        ? pedidos.map(o => `
+            <a href="/order-detail.html?id=${o.id}"
+               style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid #f0f0f0;text-decoration:none;color:inherit">
+              <img src="${o.image || FALLBACK}" alt="${o.product}" onerror="this.src='${FALLBACK}'"
+                   style="width:52px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #eee;flex-shrink:0">
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:.9rem">${o.product}</div>
+                <div style="font-size:.8rem;color:#888">Pedido #${o.id} &middot; <span class="badge badge-${o.status}">${STATUS[o.status]||o.status}</span></div>
+              </div>
+              <div style="font-weight:700;flex-shrink:0">S/ ${o.price.toFixed(2)}</div>
+            </a>`).join('')
+        : '<p style="color:#999">Sin pedidos.</p>'
+      }
+    </div>`;
+}
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+load();
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Documento</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .doc-viewer{display:grid;grid-template-columns:1.3fr 1fr;gap:24px}
+  .doc-image{width:100%;border-radius:10px;border:1px solid #eee;background:#f1f3f5}
+  .meta-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:.9rem}
+  .meta-row:last-child{border-bottom:none}
+  .meta-row .lbl{color:#888}
+  .meta-row .val{font-weight:600;text-align:right;word-break:break-all}
+  .sec-title{font-size:.75rem;letter-spacing:.5px;text-transform:uppercase;color:#c53030;font-weight:700;margin:18px 0 6px}
+  @media(max-width:760px){.doc-viewer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/documentos.html">Documentos</a>
+    <a href="/mi-cuenta.html">Mi Cuenta</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div style="margin-bottom:16px">
+    <a href="/documentos.html" style="color:#3182ce;font-size:.9rem">&larr; Volver a mis documentos</a>
+  </div>
+  <div id="content"><div style="text-align:center;padding:60px;color:#aaa">Cargando...</div></div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+const params = new URLSearchParams(window.location.search);
+const docId  = params.get('id');
+if (!docId) window.location.href = '/documentos.html';
+
+async function load() {
+  const res = await fetch(`/api/documento/${docId}`, { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) { logout(); return; }
+  if (res.status === 404) {
+    document.getElementById('content').innerHTML =
+      `<div class="card" style="text-align:center;padding:70px 20px;color:#999"><h3 style="color:#555">Documento no encontrado</h3><p>El documento ${docId} no existe.</p></div>`;
+    return;
+  }
+  const { documento: d, propietario: p, datos_financieros: f, datos_identidad: idn } = await res.json();
+  document.title = `VulnShop - ${d.titulo}`;
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="doc-viewer">
+        <div>
+          <img class="doc-image" src="${d.archivo}" alt="${d.tipo}" onerror="this.alt='Imagen no disponible';this.style.height='300px'">
+        </div>
+        <div>
+          <h2 style="margin-bottom:4px">${d.tipo}</h2>
+          <p style="color:#888;font-size:.85rem;margin-bottom:16px">${d.id} &middot; ${d.fecha}</p>
+
+          <div class="meta-row"><span class="lbl">Titular</span><span class="val">${p.nombre}</span></div>
+          <div class="meta-row"><span class="lbl">DNI</span><span class="val">${p.dni}</span></div>
+          <div class="meta-row"><span class="lbl">Correo</span><span class="val">${p.email}</span></div>
+
+          <div class="sec-title">Datos financieros</div>
+          <div class="meta-row"><span class="lbl">Cuenta bancaria</span><span class="val">${f.cuenta_bancaria}</span></div>
+          <div class="meta-row"><span class="lbl">CCI</span><span class="val">${f.cci}</span></div>
+          <div class="meta-row"><span class="lbl">Tarjeta</span><span class="val">${f.tarjeta_completa}</span></div>
+          <div class="meta-row"><span class="lbl">CVV</span><span class="val">${f.cvv}</span></div>
+          <div class="meta-row"><span class="lbl">Clave banca web</span><span class="val">${f.clave_banca_web}</span></div>
+          <div class="meta-row"><span class="lbl">Score crediticio</span><span class="val">${f.score_crediticio}</span></div>
+
+          <div class="sec-title">Identidad</div>
+          <div class="meta-row"><span class="lbl">Pasaporte</span><span class="val">${idn.pasaporte}</span></div>
+          <div class="meta-row"><span class="lbl">Token recuperacion</span><span class="val">${idn.token_recuperacion}</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+load();
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>

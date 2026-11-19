@@ -1,0 +1,28 @@
+{
+  "name": "vulnshop-nova-lab",
+  "version": "3.0.0",
+  "description": "Laboratorio de Seguridad Web + IA (OWASP Top 10:2025 y OWASP LLM Top 10) - Vigilantium 2026",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "pkg . --targets node18-win-x64 --output vulnshop-lab.exe"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "."
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.3"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^5.16.1"
+  }
+}

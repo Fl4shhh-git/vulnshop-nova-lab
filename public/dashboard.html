@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>VulnShop - Mi Cuenta</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<nav class="navbar">
+  <a href="/dashboard.html" class="brand">VulnShop</a>
+  <div class="nav-links">
+    <a href="/orders.html">Mis Pedidos</a>
+    <a href="/search?q=">Productos</a>
+    <a href="/reviews.html">Resenas</a>
+    <a href="/checkout.html">Checkout</a>
+    <a href="/documentos.html">Documentos</a>
+    <a href="/mi-cuenta.html">Mi Cuenta</a>
+    <a href="/membresia.html">Membresia</a>
+    <a href="/profile.html">Mi Perfil</a>
+    <button class="btn-logout" onclick="logout()">Cerrar sesion</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="stat-grid">
+    <div class="stat"><div class="value" id="stat-orders">-</div><div class="label">Pedidos realizados</div></div>
+    <div class="stat"><div class="value" id="stat-balance">-</div><div class="label">Saldo disponible</div></div>
+    <div class="stat"><div class="value" id="stat-role">-</div><div class="label">Tipo de cuenta</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Pedidos recientes</h2>
+    <div id="recent-orders">Cargando...</div>
+    <div style="margin-top:16px">
+      <a href="/orders.html" style="color:#3182ce;font-size:.9rem">Ver todos mis pedidos &rarr;</a>
+    </div>
+  </div>
+
+  <div class="card" style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #ddd6fe">
+    <h2>&#129302; NOVA, tu asistente de compras</h2>
+    <p style="color:#555;font-size:.9rem;margin:6px 0 10px">Resuelve tus dudas al instante: te recomienda productos, te cuenta que opinan otros clientes y te informa el estado de tus pedidos.</p>
+    <button class="btn btn-primary btn-sm" style="width:auto" onclick="novaAbrir('Cuales son mis ultimos pedidos y en que estado estan?', {enviar:true})">Preguntale por tus pedidos</button>
+    <button class="btn btn-primary btn-sm" style="width:auto" onclick="novaAbrir('Que opinan los clientes del MacBook Pro 16?', {enviar:true})">Opiniones del MacBook</button>
+  </div>
+
+  <div class="card">
+    <h2>Productos destacados</h2>
+    <form action="/search" method="GET" class="search-form">
+      <input type="text" name="q" placeholder="Buscar laptops, celulares, audio...">
+      <button type="submit" class="btn btn-primary" style="width:auto">Buscar</button>
+    </form>
+    <div class="products-grid" id="destacados"></div>
+    <div style="margin-top:14px"><a href="/search?q=" style="color:#3182ce;font-size:.9rem">Ver los 30 productos &rarr;</a></div>
+  </div>
+</div>
+
+<footer>&copy; 2026 VulnShop. Todos los derechos reservados.</footer>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+const STATUS_LABELS = { delivered: 'Entregado', shipped: 'En camino', pending: 'Pendiente' };
+const FALLBACK_IMG  = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&q=80';
+
+async function load() {
+  const [meRes, ordersRes] = await Promise.all([
+    fetch('/api/me',     { headers: { Authorization: 'Bearer ' + token } }),
+    fetch('/api/orders', { headers: { Authorization: 'Bearer ' + token } })
+  ]);
+  if (meRes.status === 401) { logout(); return; }
+
+  const me     = await meRes.json();
+  const data   = await ordersRes.json();
+  const orders = data.orders || [];
+
+  document.getElementById('stat-orders').textContent  = orders.length;
+  document.getElementById('stat-balance').textContent = 'S/ ' + Number(me.balance).toLocaleString('es-PE', { minimumFractionDigits: 2 });
+  document.getElementById('stat-role').textContent    = me.role === 'admin' ? 'Administrador' : 'Cliente';
+
+  const recent = orders.slice(-3).reverse();
+  document.getElementById('recent-orders').innerHTML = recent.length
+    ? recent.map(o => `
+        <a href="/order-detail.html?id=${o.id}"
+           style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #f0f0f0;text-decoration:none;color:inherit">
+          <img src="${o.image || FALLBACK_IMG}" alt="${o.product}"
+               onerror="this.src='${FALLBACK_IMG}'"
+               style="width:64px;height:50px;object-fit:cover;border-radius:8px;border:1px solid #eee;flex-shrink:0;background:#f8f9fa">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.92rem">${o.product}</div>
+            <div style="font-size:.8rem;color:#888;margin-top:3px">
+              Pedido #${o.id} &nbsp;&middot;&nbsp;
+              <span class="badge badge-${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+            </div>
+          </div>
+          <div style="font-weight:700;color:#1a1a2e;flex-shrink:0">S/ ${Number(o.price).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</div>
+        </a>`).join('')
+    : '<p style="color:#999">No tienes pedidos aun.</p>';
+}
+
+function logout() {
+  fetch('/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
+load();
+
+fetch('/api/productos').then(r => r.json()).then(d => {
+  const ids = [10, 1, 17, 29, 13, 20];
+  document.getElementById('destacados').innerHTML = (d.productos || []).filter(p => ids.includes(p.id))
+    .map(p => `<a href="/checkout.html?producto=${p.id}" class="product-card" style="text-decoration:none;color:inherit;padding:14px">
+      <img src="${p.imagen}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">
+      <div style="font-size:.88rem;font-weight:600">${p.nombre}</div>
+      <div style="font-weight:800;margin-top:4px">S/ ${p.precio.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</div></a>`).join('');
+});
+</script>
+<script src="/assets/js/main.4f2a9c.js"></script>
+<script src="/nova-widget.js"></script>
+</body>
+</html>
