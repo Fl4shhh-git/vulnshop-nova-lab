@@ -31,13 +31,30 @@ const JWT_TTL    = 24 * 60 * 60; // 24h
    Las llamadas internas de NOVA a la propia API llevan una clave aleatoria
    que se genera en cada arranque, asi el filtro no las bloquea.
    --------------------------------------------------------------------- */
+// Acepta IP sueltas (IPv4 o IPv6) y rangos CIDR (ej. 203.0.113.0/24 o 2001:db8:1:2::/64).
 const IPS_PERMITIDAS = (process.env.IPS_PERMITIDAS || '').split(',').map(x => x.trim()).filter(Boolean);
+const LISTA_IPS = new (require('net').BlockList)();
+for (const entrada of IPS_PERMITIDAS) {
+  const [ip, prefijo] = entrada.split('/');
+  const familia = ip.includes(':') ? 'ipv6' : 'ipv4';
+  try {
+    if (prefijo) LISTA_IPS.addSubnet(ip, Number(prefijo), familia); else LISTA_IPS.addAddress(ip, familia);
+  } catch (e) { console.error('   IPS_PERMITIDAS: entrada invalida ignorada -> ' + entrada); }
+}
+const ipPermitida = ip => { try { return LISTA_IPS.check(ip, ip.includes(':') ? 'ipv6' : 'ipv4'); } catch (e) { return false; } };
 const CLAVE_INTERNA = crypto.randomBytes(24).toString('hex');
+// Seguro: en un hosting (Render define RENDER=true) no se arranca sin lista de IP,
+// para que el laboratorio vulnerable no quede abierto a todo internet por olvido.
+if ((process.env.RENDER || process.env.NODE_ENV === 'production') && !IPS_PERMITIDAS.length && process.env.PERMITIR_PUBLICO !== '1') {
+  console.error('  X  Falta IPS_PERMITIDAS: el laboratorio no se publica abierto a todo internet.');
+  console.error('     Define IPS_PERMITIDAS=ip1,ip2 en las variables del hosting.');
+  process.exit(1);
+}
 if (process.env.TRUST_PROXY) app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY);
 if (IPS_PERMITIDAS.length) {
   app.use((req, res, next) => {
     const ip = String(req.ip || '').replace(/^::ffff:/, '');
-    if (IPS_PERMITIDAS.includes(ip) || req.headers['x-nova-interno'] === CLAVE_INTERNA) return next();
+    if (ipPermitida(ip) || req.headers['x-nova-interno'] === CLAVE_INTERNA) return next();
     console.log('   [403] IP no permitida: ' + ip + '  ' + req.method + ' ' + req.path);
     res.status(403).type('text/plain').send('403 Forbidden');
   });

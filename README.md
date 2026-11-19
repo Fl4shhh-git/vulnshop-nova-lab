@@ -31,7 +31,7 @@ node server.js
 
 Por defecto el servidor escucha solo en `127.0.0.1`. Para que lo vean otros equipos del aula, usa `HOST=0.0.0.0`.
 
-**Publicarlo en internet:** usa `HOST=0.0.0.0` e `IPS_PERMITIDAS=ip1,ip2`, para que solo esas IP puedan entrar; el resto recibe un 403. Si va detrás de un proxy (Render, Nginx, Cloudflare), agrega `TRUST_PROXY=1` para que se lea la IP real del visitante. Es un laboratorio vulnerable a propósito: nunca lo dejes abierto a todo internet.
+**Publicarlo en internet (Render):** el repo trae `render.yaml`. En Render: **New + → Blueprint →** elige este repositorio y completa `ANTHROPIC_API_KEY` e `IPS_PERMITIDAS` (por ejemplo `109.123.252.218,179.6.7.148`; acepta rangos CIDR como `2001:db8:1:2::/64`, útiles si tu navegador sale por IPv6). Render asigna la URL `https://<nombre>.onrender.com`. Si `IPS_PERMITIDAS` queda vacía, la tienda no arranca, para no quedar abierta a todo internet. En otro servidor usa `HOST=0.0.0.0`, `IPS_PERMITIDAS` y, si hay un proxy delante, `TRUST_PROXY=1`. Es un laboratorio vulnerable a propósito: nunca lo dejes abierto a todos.
 
 ## Antes de la clase: control de calidad
 
